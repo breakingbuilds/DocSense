@@ -1,0 +1,38 @@
+# ----- Project-specific generated data -----
+vector_db/
+Output/
+output/
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ----- Environment / secrets -----
+.env
+.env.local
+
+# ----- Editor / OS junk -----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ----- Jupyter -----
+.ipynb_checkpoints/
+
+# ----- Logs -----
+*.log
