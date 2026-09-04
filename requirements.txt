@@ -3,3 +3,6 @@ python-docx
 tiktoken
 lancedb
 sentence-transformers
+requests
+beautifulsoup4
+lxml

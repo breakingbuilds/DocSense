@@ -19,11 +19,12 @@ from sentence_transformers import SentenceTransformer
 # -----------------------------------
 # Embedding model
 # -----------------------------------
-# We use BAAI/bge-large-en-v1.5 ("BGE-large") instead of the smaller
-# all-MiniLM-L6-v2 model. BGE-large produces higher-quality (but larger,
-# 1024-dimensional) embeddings, which generally improves search relevance
-# at the cost of being slower and more memory-hungry than MiniLM.
-MODEL_NAME = "BAAI/bge-large-en-v1.5"
+# We use BAAI/bge-small-en-v1.5 ("BGE-small"): a good quality/speed
+# tradeoff that produces 384-dimensional embeddings (vs. 1024 for
+# BGE-large), so it's noticeably faster and lighter on memory while still
+# outperforming smaller/older models like all-MiniLM-L6-v2 on retrieval
+# benchmarks.
+MODEL_NAME = "BAAI/bge-small-en-v1.5"
 model = SentenceTransformer(MODEL_NAME)
 
 # BGE models are trained to work best when the QUERY (not the stored
