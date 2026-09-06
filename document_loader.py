@@ -191,11 +191,63 @@ def load_wikipedia(topic):
     if content is None:
         raise Exception(f"Could not find article content for: {url}")
 
+    # Inline citation markers (the little "[ 1 ]" / "[ a ]" superscripts
+    # sprinkled through the prose) are rendered as
+    # <sup class="reference">[1]</sup>. Remove them before extracting
+    # text so they don't end up glued into the middle of sentences.
+    for sup in content.find_all("sup", class_="reference"):
+        sup.decompose()
+
     # Paragraphs + list items, same extraction logic as the original
-    # scraping script this loader was based on.
+    # scraping script this loader was based on - but skipping anything
+    # that isn't actual article prose:
+    #   - <li> inside a <table> -> succession boxes / infoboxes
+    #   - <li>/<p> inside a navbox ("v t e" template boxes at the
+    #     bottom of the page, e.g. list of Pakistani PMs, cricket
+    #     captains, etc.)
+    #   - <li> inside the References/reflist section (the numbered
+    #     citation list itself, e.g. "↑ Sanjay Manjrekar ... ESPN
+    #     Cricinfo") - this is bibliographic metadata, not content.
+    NAV_AND_REF_CLASSES = {
+        "navbox",
+        "navbox-inner",
+        "vertical-navbox",
+        "reflist",
+        "refbegin",
+    }
+
+    def _is_in_excluded_container(element):
+        # An element's own id tells us directly if it's a citation
+        # footnote: MediaWiki's Cite extension gives every reference
+        # list item an id like "cite_note-fact_focus-1". This is the
+        # most reliable signal and doesn't depend on which div happens
+        # to wrap the list.
+        el_id = element.get("id") or ""
+        if el_id.startswith("cite_note"):
+            return True
+
+        for parent in element.parents:
+            if parent.name == "table":
+                return True
+            # The references list itself is always <ol class="references">
+            # (regardless of what class the surrounding wrapper div has),
+            # so check for that ancestor directly rather than relying on
+            # a "reflist" class further up the tree.
+            if parent.name == "ol" and "references" in (parent.get("class") or []):
+                return True
+            parent_classes = parent.get("class") or []
+            if any(cls in NAV_AND_REF_CLASSES for cls in parent_classes):
+                return True
+        return False
+
     elements = content.find_all(["p", "li"])
-    pieces = [el.get_text(" ", strip=True) for el in elements]
-    pieces = [p for p in pieces if p]  # drop empties
+    pieces = []
+    for el in elements:
+        if _is_in_excluded_container(el):
+            continue
+        text = el.get_text(" ", strip=True)
+        if text:
+            pieces.append(text)
 
     text = "\n".join(pieces)
 

@@ -33,6 +33,23 @@ model = SentenceTransformer(MODEL_NAME)
 # card recommends for retrieval tasks. Leaving it out still works, but
 # search quality is noticeably better with it.
 BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
+
+# -----------------------------------
+# Relevance threshold
+# -----------------------------------
+# Dense embedding models like BGE are "anisotropic": even two totally
+# unrelated sentences typically land around ~0.4-0.6 cosine similarity
+# instead of near 0. That means a generic/empty query (e.g. "hello")
+# will still return *something* with a moderate-looking score, even
+# though nothing in the store is actually relevant to it.
+#
+# Anything below this threshold is treated as "not actually a match"
+# and dropped from the results, so a query like "hello" returns
+# nothing instead of a fake top-3 with a misleadingly plausible score.
+# Tune this per your data: if genuinely relevant queries score lower
+# than expected, lower it; if irrelevant queries still sneak through,
+# raise it.
+SIMILARITY_THRESHOLD = 0.6
 # -----------------------------------
 # LanceDB connection
 # -----------------------------------
@@ -193,10 +210,18 @@ def search_chunks(query, top_k=5):
 
     # LanceDB returns cosine DISTANCE (1 - cosine similarity) in "_distance".
     # Convert it back to similarity so it's intuitive to read (1.0 = identical).
+    #
+    # Results below SIMILARITY_THRESHOLD are dropped entirely rather than
+    # just zeroed out - a chunk that isn't actually relevant shouldn't
+    # show up in a "top 3 results" list at all.
     results = []
     for row in raw_results:
         cosine_distance = row["_distance"]
         cosine_similarity = 1 - cosine_distance
+
+        if cosine_similarity < SIMILARITY_THRESHOLD:
+            continue
+
         results.append({
             "text": row["text"],
             "source": row["source"],
@@ -204,5 +229,8 @@ def search_chunks(query, top_k=5):
             "chunk_index": row["chunk_index"],
             "similarity": cosine_similarity,
         })
+
+    if not results:
+        print(f"No results above the similarity threshold ({SIMILARITY_THRESHOLD}).")
 
     return results

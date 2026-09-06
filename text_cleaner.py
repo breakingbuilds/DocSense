@@ -25,6 +25,15 @@ def clean_text(text):
     if text is None:
         return ""
 
+    # Safety net: strip leftover citation/footnote artifacts, in case
+    # any slip through the loader (e.g. "[ 1 ]", "[ a ]", stray "↑"
+    # footnote-back-reference arrows from Wikipedia extraction).
+    # document_loader.py already removes most of these at the source,
+    # but this keeps text_cleaner.py robust for any input source.
+    text = re.sub(r"\[\s*[0-9]+\s*\]", " ", text)   # e.g. "[ 106 ]"
+    text = re.sub(r"\[\s*[a-z]\s*\]", " ", text)    # e.g. "[ a ]"
+    text = text.replace("↑", " ")
+
     # Replace any run of whitespace characters (spaces, tabs, newlines...)
     # with a single space, so text extracted from PDFs/DOCX (which often
     # has irregular line breaks) becomes one clean, continuous string.
